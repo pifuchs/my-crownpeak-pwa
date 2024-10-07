@@ -1,0 +1,61 @@
+# To better understand this file read this:
+# https://docs.ionos.space/docs/github-actions-customization/
+
+name: "Deploy Now: Execute Build"
+
+on:
+  workflow_call:
+    inputs:
+      site-url:
+        required: true
+        type: string
+      branch-id:
+        required: true
+        type: string
+
+env:
+  DEPLOYMENT_FOLDER: dist
+
+jobs:
+# Please do not rename this job
+  build-project:
+    name: build my-crownpeak-pwa
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: v18.13.0
+
+      - name: Build Node assets
+        env:
+          CI: true
+          NUXT_PRIVATE_API_KEY: b3601f32-3c78-47c1-9ade-a0a573d19656
+          NUXT_PRIVATE_CAAS: https://partner-caas-api.e-spirit.cloud
+          NUXT_PRIVATE_NAVIGATION_SERVICE: https://partner-navigationservice.e-spirit.cloud/navigation
+          NUXT_PRIVATE_PROJECT_ID: 2befc5c6-44f6-43d0-9ab4-9119e417ba29
+          NUXT_PRIVATE_TENANT_ID: partner-prod
+          NUXT_PUBLIC_MODE: preview
+          SITE_URL: ${{ inputs.site-url }}
+        run: |
+          npm ci
+          npm run build
+          npm run generate
+
+# Please do not touch the following action
+      - name: Store deployment content
+        uses: ionos-deploy-now/artifact-action@v1
+        with:
+          api-key: ${{ secrets.IONOS_API_KEY }}
+          service-host: api-eu.ionos.space
+          project-id: 50bc4083-0703-4426-9f53-0e22b0afd515
+          branch-id: ${{ inputs.branch-id }}
+          version: ${{ github.sha }}
+          folder: ${{ env.DEPLOYMENT_FOLDER }}
+          config-file: .deploy-now/my-crownpeak-pwa/config.yaml
+          action: upload
